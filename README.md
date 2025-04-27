@@ -9,6 +9,8 @@
 - Добавление и удаление пользователей
 - Генерация QR-кодов с конфигурацией для клиентов
 - Получение JSON-конфигурации для клиентов
+- Генерация VLESS URI-ссылок для быстрой настройки клиентов
+- Генерация QR-кодов для VLESS URI-ссылок
 - Генерация ключей для REALITY
 - Частичное обновление конфигурации
 
@@ -111,6 +113,36 @@ python3 main.py get-config --name username --config config.json
 python3 main.py get-config --name username --config config.json --save client-config.json
 ```
 
+### Получение VLESS URI-ссылки
+
+```bash
+python3 main.py vless-link --name username --config config.json
+```
+
+### Получение VLESS URI-ссылки с указанием сервера
+
+```bash
+python3 main.py vless-link --name username --config config.json --server 123.45.67.89
+```
+
+### Сохранение VLESS URI-ссылки в файл
+
+```bash
+python3 main.py vless-link --name username --config config.json --server 123.45.67.89 --save vless-link.txt
+```
+
+### Отображение QR-кода для VLESS URI-ссылки в терминале
+
+```bash
+python3 main.py vless-link --name username --config config.json --server 123.45.67.89 --qr
+```
+
+### Сохранение QR-кода для VLESS URI-ссылки в файл
+
+```bash
+python3 main.py vless-link --name username --config config.json --server 123.45.67.89 --qr-save vless-qr.png
+```
+
 ## Примеры использования
 
 ### Полный процесс настройки
@@ -133,6 +165,16 @@ python3 main.py start --detach
 4. Сгенерировать QR-код для пользователя:
 ```bash
 python3 main.py qr --name user1 --save user1_qr.png
+```
+
+5. Сгенерировать VLESS ссылку для пользователя:
+```bash
+python3 main.py vless-link --name user1 --server 123.45.67.89
+```
+
+6. Сгенерировать QR-код для VLESS ссылки:
+```bash
+python3 main.py vless-link --name user1 --server 123.45.67.89 --qr-save vless_qr.png
 ```
 
 ### Обновление существующей конфигурации

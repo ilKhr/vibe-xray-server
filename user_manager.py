@@ -6,6 +6,7 @@ import os
 import qrcode
 import base64
 import tempfile
+import urllib.parse
 from datetime import datetime
 
 class UserManager:
@@ -153,6 +154,73 @@ class UserManager:
         }
 
         return client_config
+
+    def generate_vless_link(self, name, server_address=""):
+        """Генерация URI-ссылки VLESS для быстрой настройки клиента"""
+        # Поиск пользователя по имени
+        user_info = self.config_manager.get_client_by_name(name)
+        if not user_info:
+            print(f"Пользователь с именем {name} не найден")
+            return None
+
+        user_id, user_data = user_info
+        server_info = self.config_manager.get_server_info()
+
+        if not server_info:
+            print("Ошибка: информация о сервере не найдена")
+            return None
+
+        # Формирование параметров для ссылки
+        params = {
+            "flow": "xtls-rprx-vision",
+            "type": "tcp",
+            "security": "reality",
+            "sni": server_info["serverName"],
+            "pbk": server_info["publicKey"],
+            "sid": server_info["shortId"],
+            "spx": "/"  # Путь по умолчанию
+        }
+
+        # Кодирование параметров для URL
+        query_string = "&".join([f"{k}={urllib.parse.quote(v)}" for k, v in params.items()])
+
+        # Формирование ссылки
+        # Если server_address не указан, оставляем его пустым - пользователь должен заполнить его сам
+        vless_link = f"vless://{user_id}@{server_address}:{server_info['port']}?{query_string}#{urllib.parse.quote(name)}"
+
+        return vless_link
+
+    def generate_vless_qr(self, name, server_address="", save_path=None):
+        """Генерация QR-кода на основе VLESS URI-ссылки"""
+        # Получаем VLESS-ссылку
+        vless_link = self.generate_vless_link(name, server_address)
+        if not vless_link:
+            return False
+
+        # Создание QR-кода
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(vless_link)
+        qr.make(fit=True)
+
+        # Обработка в зависимости от наличия save_path
+        if save_path:
+            # Создание изображения QR-кода и сохранение в файл
+            img = qr.make_image(fill_color="black", back_color="white")
+            img.save(save_path)
+            print(f"QR-код с VLESS-ссылкой сохранен в {save_path}")
+        else:
+            # Отображение QR-кода прямо в терминале
+            print("\nQR-код для VLESS URI-ссылки:")
+            qr.print_ascii(invert=True)
+            print("\nVLESS URI-ссылка:")
+            print(vless_link)
+
+        return True
 
     def generate_qr_code(self, name, save_path=None):
         """Генерация QR-кода с конфигурацией для клиента"""

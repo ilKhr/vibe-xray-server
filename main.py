@@ -49,6 +49,15 @@ def main():
     get_config_parser.add_argument('--config', type=str, default='config.json', help='Путь к файлу конфигурации')
     get_config_parser.add_argument('--save', type=str, help='Путь для сохранения JSON-конфигурации в файл')
 
+    # Команда для получения URI-ссылки VLESS
+    vless_link_parser = subparsers.add_parser('vless-link', help='Получение URI-ссылки VLESS для клиента')
+    vless_link_parser.add_argument('--name', type=str, required=True, help='Имя пользователя')
+    vless_link_parser.add_argument('--config', type=str, default='config.json', help='Путь к файлу конфигурации')
+    vless_link_parser.add_argument('--server', type=str, default="", help='IP-адрес или домен сервера для ссылки')
+    vless_link_parser.add_argument('--save', type=str, help='Путь для сохранения ссылки в файл')
+    vless_link_parser.add_argument('--qr', action='store_true', help='Генерировать QR-код для VLESS-ссылки')
+    vless_link_parser.add_argument('--qr-save', type=str, help='Путь для сохранения QR-кода VLESS-ссылки')
+
     # Команда для генерации ключей
     keys_parser = subparsers.add_parser('gen-keys', help='Генерация ключей для Reality')
     keys_parser.add_argument('--save-to-config', type=str, help='Сохранить ключи в указанный файл конфигурации')
@@ -141,6 +150,28 @@ def main():
             else:
                 # Вывод конфигурации в терминал
                 print(json.dumps(client_config, indent=2))
+
+    elif args.command == 'vless-link':
+        config_manager.load_config(args.config)
+
+        if args.qr or args.qr_save:
+            # Генерация QR-кода для VLESS-ссылки
+            user_manager.generate_vless_qr(args.name, args.server, args.qr_save)
+            if args.qr_save:
+                print(f"QR-код для VLESS-ссылки сохранен в {args.qr_save}")
+        else:
+            # Обычный вывод VLESS-ссылки
+            vless_link = user_manager.generate_vless_link(args.name, args.server)
+            if vless_link:
+                if args.save:
+                    # Сохранение ссылки в файл
+                    with open(args.save, 'w') as f:
+                        f.write(vless_link)
+                    print(f"VLESS-ссылка сохранена в {args.save}")
+                else:
+                    # Вывод ссылки в терминал
+                    print("\nVLESS URI-ссылка для быстрой настройки клиента:")
+                    print(vless_link)
 
     elif args.command == 'gen-keys':
         private_key, public_key = config_manager.generate_keys()
