@@ -42,12 +42,14 @@ def main():
     qr_parser.add_argument('--name', type=str, required=True, help='Имя пользователя')
     qr_parser.add_argument('--config', type=str, default='config.json', help='Путь к файлу конфигурации')
     qr_parser.add_argument('--save', type=str, help='Путь для сохранения QR-кода')
+    qr_parser.add_argument('--server', type=str, default="", help='IP-адрес или домен сервера для конфигурации')
 
     # Команда для получения JSON-конфигурации пользователя
     get_config_parser = subparsers.add_parser('get-config', help='Получение JSON-конфигурации для клиента')
     get_config_parser.add_argument('--name', type=str, required=True, help='Имя пользователя')
     get_config_parser.add_argument('--config', type=str, default='config.json', help='Путь к файлу конфигурации')
     get_config_parser.add_argument('--save', type=str, help='Путь для сохранения JSON-конфигурации в файл')
+    get_config_parser.add_argument('--server', type=str, default="", help='IP-адрес или домен сервера для конфигурации')
 
     # Команда для получения URI-ссылки VLESS
     vless_link_parser = subparsers.add_parser('vless-link', help='Получение URI-ссылки VLESS для клиента')
@@ -134,13 +136,13 @@ def main():
 
     elif args.command == 'qr':
         config_manager.load_config(args.config)
-        user_manager.generate_qr_code(args.name, args.save)
+        user_manager.generate_qr_code(args.name, args.save, args.server)
         if args.save:
             print(f"QR-код сохранен в {args.save}")
 
     elif args.command == 'get-config':
         config_manager.load_config(args.config)
-        client_config = user_manager.generate_client_config(args.name)
+        client_config = user_manager.generate_client_config(args.name, args.server)
         if client_config:
             if args.save:
                 # Сохранение конфигурации в файл

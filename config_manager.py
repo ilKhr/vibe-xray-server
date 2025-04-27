@@ -95,7 +95,6 @@ class ConfigManager:
     def create_config(self, dest, server_names, port=443):
         """Создание новой конфигурации Xray с REALITY"""
         private_key, public_key = self.generate_keys()
-        short_id = self.generate_short_id()
 
         # Настройка inbound
         inbound = self.config["inbounds"][0]
@@ -107,13 +106,12 @@ class ConfigManager:
             "dest": dest,
             "serverNames": server_names,
             "privateKey": private_key,
-            "shortIds": [short_id]
+            "shortIds": []  # Пустой список shortIds, индивидуальные shortId будут добавляться для каждого пользователя
         })
 
         # Сохраняем публичный ключ в метаданных для использования клиентами
         self.user_metadata["server"] = {
             "publicKey": public_key,
-            "shortId": short_id,
             "serverName": server_names[0],
             "dest": dest,
             "port": port
@@ -159,24 +157,31 @@ class ConfigManager:
             self.user_metadata["server"] = {}
         self.user_metadata["server"]["port"] = port
 
-    def update_keys(self, private_key, public_key, short_id):
-        """Обновление ключей и shortId в REALITY настройках"""
+    def update_keys(self, private_key, public_key, short_id=None):
+        """Обновление ключей в REALITY настройках"""
         reality_settings = self.get_reality_settings()
         reality_settings["privateKey"] = private_key
-
-        if "shortIds" not in reality_settings:
-            reality_settings["shortIds"] = []
-
-        if not reality_settings["shortIds"]:
-            reality_settings["shortIds"].append(short_id)
-        else:
-            reality_settings["shortIds"][0] = short_id
 
         # Обновление метаданных для клиентов
         if "server" not in self.user_metadata:
             self.user_metadata["server"] = {}
         self.user_metadata["server"]["publicKey"] = public_key
-        self.user_metadata["server"]["shortId"] = short_id
+
+    def generate_short_id(self):
+        """Генерация короткого идентификатора для Reality"""
+        try:
+            # Используем openssl для генерации short_id
+            result = subprocess.run(
+                ["openssl", "rand", "-hex", "8"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            return result.stdout.strip()
+        except Exception as e:
+            print(f"Ошибка при генерации short_id через openssl: {e}")
+            # Запасной метод, если команда openssl не доступна
+            return secrets.token_hex(8)
 
     def generate_keys(self):
         """Генерация ключей X25519 для REALITY"""
@@ -205,16 +210,21 @@ class ConfigManager:
             public_key = base64.b64encode(os.urandom(32)).decode('utf-8')
             return private_key, public_key
 
-    def generate_short_id(self, length=16):
-        """Генерация short ID для REALITY"""
-        # Генерация случайной строки hex символов
-        alphabet = string.ascii_lowercase + string.digits
-        short_id = ''.join(secrets.choice(alphabet) for _ in range(length))
-        return short_id
-
     def generate_uuid(self):
-        """Генерация UUID для пользователя"""
-        return str(uuid.uuid4())
+        """Генерация UUID через Docker и Xray"""
+        try:
+            # Используем Docker для запуска Xray и генерации UUID
+            result = subprocess.run(
+                ["docker", "run", "--rm", "ghcr.io/xtls/xray-core:latest", "uuid"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            return result.stdout.strip()
+        except Exception as e:
+            print(f"Ошибка при генерации UUID через Docker: {e}")
+            # Запасной метод, если Docker недоступен
+            return str(uuid.uuid4())
 
     def get_inbound(self):
         """Получение основного inbound из конфигурации"""
@@ -228,19 +238,42 @@ class ConfigManager:
         """Получение списка клиентов из конфигурации"""
         return self.get_inbound()["settings"]["clients"]
 
-    def get_server_info(self):
-        """Получение информации о сервере для клиентских конфигураций"""
-        return self.user_metadata.get("server", {})
+    def add_client_short_id(self, short_id):
+        """Добавление short_id в список shortIds в realitySettings"""
+        reality_settings = self.get_reality_settings()
+        if "shortIds" not in reality_settings:
+            reality_settings["shortIds"] = []
 
-    def update_client(self, user_id, name, client_data):
-        """Обновление данных клиента в метаданных"""
+        # Добавляем short_id, если его еще нет в списке
+        if short_id not in reality_settings["shortIds"]:
+            reality_settings["shortIds"].append(short_id)
+
+    def get_server_info(self):
+        """Получение информации о сервере из метаданных"""
+        server_info = self.user_metadata.get("server", {})
+
+        # Добавляем список shortIds из realitySettings, если они есть
+        if self.has_reality_settings():
+            reality_settings = self.get_reality_settings()
+            if "shortIds" in reality_settings:
+                server_info["shortIds"] = reality_settings.get("shortIds", [])
+
+        return server_info
+
+    def update_client(self, user_id, name, client_data, short_id=None):
+        """Обновление или добавление метаданных о клиенте"""
         if "users" not in self.user_metadata:
             self.user_metadata["users"] = {}
 
+        # Сохранение базовой информации о пользователе
         self.user_metadata["users"][user_id] = {
             "name": name,
             "data": client_data
         }
+
+        # Если передан short_id, сохраняем его для этого пользователя
+        if short_id:
+            self.user_metadata["users"][user_id]["shortId"] = short_id
 
     def get_client_by_name(self, name):
         """Поиск клиента по имени"""

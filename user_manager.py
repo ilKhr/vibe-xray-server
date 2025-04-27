@@ -27,6 +27,12 @@ class UserManager:
         # Генерация UUID для нового пользователя
         user_id = self.config_manager.generate_uuid()
 
+        # Генерация short_id для пользователя
+        short_id = self.config_manager.generate_short_id()
+
+        # Добавление short_id в realitySettings
+        self.config_manager.add_client_short_id(short_id)
+
         # Добавление пользователя в конфигурацию
         clients = self.config_manager.get_clients()
         client_data = {
@@ -35,8 +41,8 @@ class UserManager:
         }
         clients.append(client_data)
 
-        # Сохранение метаданных о пользователе
-        self.config_manager.update_client(user_id, name, client_data)
+        # Сохранение метаданных о пользователе вместе с short_id
+        self.config_manager.update_client(user_id, name, client_data, short_id)
 
         return user_id
 
@@ -93,7 +99,7 @@ class UserManager:
                 print(f"Ошибка при определении внешнего IP-адреса: {e}")
                 return ""
 
-    def generate_client_config(self, name):
+    def generate_client_config(self, name, server_address=""):
         """Генерация конфигурации для клиента"""
         # Поиск пользователя по имени
         user_info = self.config_manager.get_client_by_name(name)
@@ -107,6 +113,24 @@ class UserManager:
         if not server_info:
             print("Ошибка: информация о сервере не найдена")
             return None
+
+        # Если сервер не указан, пытаемся определить его автоматически
+        if not server_address:
+            server_address = self.get_external_ip()
+            if server_address:
+                print(f"Автоматически определен IP-адрес сервера: {server_address}")
+            else:
+                print("Не удалось автоматически определить IP-адрес сервера. Конфигурация будет содержать пустое поле address.")
+
+        # Получаем shortId пользователя из метаданных
+        user_short_id = ""
+        if "users" in self.config_manager.user_metadata:
+            if user_id in self.config_manager.user_metadata["users"]:
+                user_short_id = self.config_manager.user_metadata["users"][user_id].get("shortId", "")
+
+        # Если shortId не найден, используем первый из списка (обратная совместимость)
+        if not user_short_id and "shortIds" in server_info and server_info["shortIds"]:
+            user_short_id = server_info["shortIds"][0]
 
         # Создание конфигурации для клиента
         client_config = {
@@ -141,7 +165,7 @@ class UserManager:
                     "settings": {
                         "vnext": [
                             {
-                                "address": "",  # IP-адрес сервера заполняется клиентом
+                                "address": server_address,  # Используем определенный IP-адрес сервера
                                 "port": server_info["port"],
                                 "users": [
                                     {
@@ -160,7 +184,7 @@ class UserManager:
                             "fingerprint": "chrome",
                             "serverName": server_info["serverName"],
                             "publicKey": server_info["publicKey"],
-                            "shortId": server_info["shortId"]
+                            "shortId": user_short_id
                         }
                     },
                     "tag": "proxy"
@@ -197,6 +221,16 @@ class UserManager:
             else:
                 print("Не удалось автоматически определить IP-адрес сервера. Указывайте адрес вручную с помощью параметра --server")
 
+        # Получаем shortId пользователя из метаданных
+        user_short_id = ""
+        if "users" in self.config_manager.user_metadata:
+            if user_id in self.config_manager.user_metadata["users"]:
+                user_short_id = self.config_manager.user_metadata["users"][user_id].get("shortId", "")
+
+        # Если shortId не найден, используем первый из списка (обратная совместимость)
+        if not user_short_id and "shortIds" in server_info and server_info["shortIds"]:
+            user_short_id = server_info["shortIds"][0]
+
         # Формирование параметров для ссылки
         params = {
             "flow": "xtls-rprx-vision",
@@ -204,7 +238,7 @@ class UserManager:
             "security": "reality",
             "sni": server_info["serverName"],
             "pbk": server_info["publicKey"],
-            "sid": server_info["shortId"],
+            "sid": user_short_id,
             "spx": "/"  # Путь по умолчанию
         }
 
@@ -248,9 +282,9 @@ class UserManager:
 
         return True
 
-    def generate_qr_code(self, name, save_path=None):
+    def generate_qr_code(self, name, save_path=None, server_address=""):
         """Генерация QR-кода с конфигурацией для клиента"""
-        client_config = self.generate_client_config(name)
+        client_config = self.generate_client_config(name, server_address)
         if not client_config:
             return False
 
