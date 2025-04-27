@@ -44,6 +44,7 @@ def main():
 
     # Команда для генерации ключей
     keys_parser = subparsers.add_parser('gen-keys', help='Генерация ключей для Reality')
+    keys_parser.add_argument('--save-to-config', type=str, help='Сохранить ключи в указанный файл конфигурации')
 
     # Команда для просмотра всех пользователей
     list_users_parser = subparsers.add_parser('list-users', help='Список всех пользователей')
@@ -60,14 +61,38 @@ def main():
     docker_manager = DockerManager()
 
     if args.command == 'config':
-        if not all([args.dest, args.server_names]):
-            print("Ошибка: требуются параметры --dest и --server-names")
+        # Проверяем, существует ли файл конфигурации
+        try:
+            config_manager.load_config(args.save)
+            print(f"Найдена существующая конфигурация в {args.save}, обновляю указанные параметры")
+        except:
+            print(f"Создаю новую конфигурацию в {args.save}")
+
+        # Проверяем наличие обязательных параметров при создании новой конфигурации
+        if not config_manager.has_reality_settings() and not all([args.dest, args.server_names]):
+            print("Ошибка: при создании новой конфигурации требуются параметры --dest и --server-names")
             return
-        config_manager.create_config(
-            dest=args.dest,
-            server_names=args.server_names,
-            port=args.port
-        )
+
+        # Обновляем параметры
+        if args.dest:
+            config_manager.update_dest(args.dest)
+            print(f"Обновлен dest: {args.dest}")
+
+        if args.server_names:
+            config_manager.update_server_names(args.server_names)
+            print(f"Обновлены server_names: {', '.join(args.server_names)}")
+
+        if args.port:
+            config_manager.update_port(args.port)
+            print(f"Обновлен порт: {args.port}")
+
+        # Если конфигурация новая, генерируем ключи
+        if not config_manager.has_reality_settings():
+            private_key, public_key = config_manager.generate_keys()
+            short_id = config_manager.generate_short_id()
+            config_manager.update_keys(private_key, public_key, short_id)
+            print("Сгенерированы новые ключи и short_id")
+
         config_manager.save_config(args.save)
         print(f"Конфигурация сохранена в {args.save}")
 
@@ -101,6 +126,19 @@ def main():
         private_key, public_key = config_manager.generate_keys()
         print(f"Приватный ключ: {private_key}")
         print(f"Публичный ключ: {public_key}")
+
+        if args.save_to_config:
+            config_manager.load_config(args.save_to_config)
+            inbound = config_manager.get_inbound()
+            reality_settings = inbound["streamSettings"]["realitySettings"]
+            reality_settings["privateKey"] = private_key
+
+            # Обновление публичного ключа в метаданных для клиентов
+            server_info = config_manager.get_server_info()
+            server_info["publicKey"] = public_key
+
+            config_manager.save_config(args.save_to_config)
+            print(f"Ключи сохранены в конфигурации {args.save_to_config}")
 
     elif args.command == 'list-users':
         config_manager.load_config(args.config)

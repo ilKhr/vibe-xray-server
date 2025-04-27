@@ -121,6 +121,63 @@ class ConfigManager:
 
         return self.config
 
+    def has_reality_settings(self):
+        """Проверяет, настроены ли параметры REALITY в конфигурации"""
+        try:
+            reality_settings = self.get_reality_settings()
+            return bool(reality_settings.get("privateKey") and reality_settings.get("dest") and reality_settings.get("serverNames"))
+        except:
+            return False
+
+    def update_dest(self, dest):
+        """Обновление целевого домена в REALITY настройках"""
+        reality_settings = self.get_reality_settings()
+        reality_settings["dest"] = dest
+
+        # Обновление метаданных для клиентов
+        if "server" not in self.user_metadata:
+            self.user_metadata["server"] = {}
+        self.user_metadata["server"]["dest"] = dest
+
+    def update_server_names(self, server_names):
+        """Обновление serverNames в REALITY настройках"""
+        reality_settings = self.get_reality_settings()
+        reality_settings["serverNames"] = server_names
+
+        # Обновление метаданных для клиентов
+        if "server" not in self.user_metadata:
+            self.user_metadata["server"] = {}
+        self.user_metadata["server"]["serverName"] = server_names[0]
+
+    def update_port(self, port):
+        """Обновление порта для inbound"""
+        inbound = self.get_inbound()
+        inbound["port"] = port
+
+        # Обновление метаданных для клиентов
+        if "server" not in self.user_metadata:
+            self.user_metadata["server"] = {}
+        self.user_metadata["server"]["port"] = port
+
+    def update_keys(self, private_key, public_key, short_id):
+        """Обновление ключей и shortId в REALITY настройках"""
+        reality_settings = self.get_reality_settings()
+        reality_settings["privateKey"] = private_key
+
+        if "shortIds" not in reality_settings:
+            reality_settings["shortIds"] = []
+
+        if not reality_settings["shortIds"]:
+            reality_settings["shortIds"].append(short_id)
+        else:
+            reality_settings["shortIds"][0] = short_id
+
+        # Обновление метаданных для клиентов
+        if "server" not in self.user_metadata:
+            self.user_metadata["server"] = {}
+        self.user_metadata["server"]["publicKey"] = public_key
+        self.user_metadata["server"]["shortId"] = short_id
+
     def generate_keys(self):
         """Генерация ключей X25519 для REALITY"""
         try:
