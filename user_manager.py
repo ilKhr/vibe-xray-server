@@ -7,6 +7,7 @@ import qrcode
 import base64
 import tempfile
 import urllib.parse
+import urllib.request
 from datetime import datetime
 
 class UserManager:
@@ -73,6 +74,24 @@ class UserManager:
                     "name": user_data["name"]
                 })
         return users
+
+    def get_external_ip(self):
+        """Определение внешнего IP-адреса сервера"""
+        try:
+            # Используем сервис ipify для определения внешнего IP-адреса
+            with urllib.request.urlopen('https://api.ipify.org') as response:
+                ip = response.read().decode('utf-8')
+                return ip
+        except Exception as e:
+            print(f"Ошибка при определении внешнего IP-адреса: {e}")
+            # Пробуем альтернативный сервис, если первый не сработал
+            try:
+                with urllib.request.urlopen('https://ifconfig.me/ip') as response:
+                    ip = response.read().decode('utf-8')
+                    return ip
+            except Exception as e:
+                print(f"Ошибка при определении внешнего IP-адреса: {e}")
+                return ""
 
     def generate_client_config(self, name):
         """Генерация конфигурации для клиента"""
@@ -170,6 +189,14 @@ class UserManager:
             print("Ошибка: информация о сервере не найдена")
             return None
 
+        # Если сервер не указан, пытаемся определить его автоматически
+        if not server_address:
+            server_address = self.get_external_ip()
+            if server_address:
+                print(f"Автоматически определен IP-адрес сервера: {server_address}")
+            else:
+                print("Не удалось автоматически определить IP-адрес сервера. Указывайте адрес вручную с помощью параметра --server")
+
         # Формирование параметров для ссылки
         params = {
             "flow": "xtls-rprx-vision",
@@ -185,7 +212,6 @@ class UserManager:
         query_string = "&".join([f"{k}={urllib.parse.quote(v)}" for k, v in params.items()])
 
         # Формирование ссылки
-        # Если server_address не указан, оставляем его пустым - пользователь должен заполнить его сам
         vless_link = f"vless://{user_id}@{server_address}:{server_info['port']}?{query_string}#{urllib.parse.quote(name)}"
 
         return vless_link
