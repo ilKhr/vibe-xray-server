@@ -3,6 +3,7 @@
 
 import argparse
 import sys
+import json
 from config_manager import ConfigManager
 from user_manager import UserManager
 from docker_manager import DockerManager
@@ -41,6 +42,12 @@ def main():
     qr_parser.add_argument('--name', type=str, required=True, help='Имя пользователя')
     qr_parser.add_argument('--config', type=str, default='config.json', help='Путь к файлу конфигурации')
     qr_parser.add_argument('--save', type=str, help='Путь для сохранения QR-кода')
+
+    # Команда для получения JSON-конфигурации пользователя
+    get_config_parser = subparsers.add_parser('get-config', help='Получение JSON-конфигурации для клиента')
+    get_config_parser.add_argument('--name', type=str, required=True, help='Имя пользователя')
+    get_config_parser.add_argument('--config', type=str, default='config.json', help='Путь к файлу конфигурации')
+    get_config_parser.add_argument('--save', type=str, help='Путь для сохранения JSON-конфигурации в файл')
 
     # Команда для генерации ключей
     keys_parser = subparsers.add_parser('gen-keys', help='Генерация ключей для Reality')
@@ -121,6 +128,19 @@ def main():
         user_manager.generate_qr_code(args.name, args.save)
         if args.save:
             print(f"QR-код сохранен в {args.save}")
+
+    elif args.command == 'get-config':
+        config_manager.load_config(args.config)
+        client_config = user_manager.generate_client_config(args.name)
+        if client_config:
+            if args.save:
+                # Сохранение конфигурации в файл
+                with open(args.save, 'w') as f:
+                    json.dump(client_config, f, indent=2)
+                print(f"Конфигурация сохранена в {args.save}")
+            else:
+                # Вывод конфигурации в терминал
+                print(json.dumps(client_config, indent=2))
 
     elif args.command == 'gen-keys':
         private_key, public_key = config_manager.generate_keys()

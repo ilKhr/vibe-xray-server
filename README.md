@@ -8,6 +8,7 @@
 - Запуск и остановка Xray через Docker
 - Добавление и удаление пользователей
 - Генерация QR-кодов с конфигурацией для клиентов
+- Получение JSON-конфигурации для клиентов
 - Генерация ключей для REALITY
 - Частичное обновление конфигурации
 
@@ -90,6 +91,24 @@ python3 main.py list-users --config config.json
 
 ```bash
 python3 main.py qr --name username --config config.json --save qrcode.png
+```
+
+### Отображение QR-кода в терминале
+
+```bash
+python3 main.py qr --name username --config config.json
+```
+
+### Получение JSON-конфигурации для пользователя
+
+```bash
+python3 main.py get-config --name username --config config.json
+```
+
+### Сохранение JSON-конфигурации в файл
+
+```bash
+python3 main.py get-config --name username --config config.json --save client-config.json
 ```
 
 ## Примеры использования

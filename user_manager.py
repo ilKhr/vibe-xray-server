@@ -173,22 +173,17 @@ class UserManager:
         qr.add_data(config_json)
         qr.make(fit=True)
 
-        # Создание изображения QR-кода
-        img = qr.make_image(fill_color="black", back_color="white")
-
-        # Сохранение QR-кода в файл или его отображение
+        # Обработка в зависимости от наличия save_path
         if save_path:
+            # Создание изображения QR-кода и сохранение в файл
+            img = qr.make_image(fill_color="black", back_color="white")
             img.save(save_path)
             print(f"QR-код с конфигурацией сохранен в {save_path}")
         else:
-            # Если путь для сохранения не указан, сохраняем во временный файл
-            # и выводим его путь для просмотра
-            temp_file = tempfile.mktemp(suffix=".png")
-            img.save(temp_file)
-            print(f"QR-код сохранен во временный файл: {temp_file}")
-
-            # Вывод конфигурации в консоль
-            print("\nКонфигурация для клиента:")
+            # Отображение QR-кода прямо в терминале
+            print("\nQR-код для конфигурации клиента:")
+            qr.print_ascii(invert=True)
+            print("\nКонфигурация для клиента (JSON):")
             print(json.dumps(client_config, indent=2))
 
         return True
