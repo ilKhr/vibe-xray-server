@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import json
+import os
+import qrcode
+import base64
+import tempfile
+from datetime import datetime
+
+class UserManager:
+    """Класс для управления пользователями в конфигурации Xray"""
+
+    def __init__(self, config_manager):
+        self.config_manager = config_manager
+
+    def add_user(self, name):
+        """Добавление нового пользователя в конфигурацию"""
+        # Проверка, существует ли пользователь с таким именем
+        existing_user = self.config_manager.get_client_by_name(name)
+        if existing_user:
+            print(f"Пользователь с именем {name} уже существует")
+            return existing_user[0]  # Вернуть ID существующего пользователя
+
+        # Генерация UUID для нового пользователя
+        user_id = self.config_manager.generate_uuid()
+
+        # Добавление пользователя в конфигурацию
+        clients = self.config_manager.get_clients()
+        client_data = {
+            "id": user_id,
+            "flow": "xtls-rprx-vision"
+        }
+        clients.append(client_data)
+
+        # Сохранение метаданных о пользователе
+        self.config_manager.update_client(user_id, name, client_data)
+
+        return user_id
+
+    def remove_user(self, name):
+        """Удаление пользователя из конфигурации"""
+        # Поиск пользователя по имени
+        user_info = self.config_manager.get_client_by_name(name)
+        if not user_info:
+            print(f"Пользователь с именем {name} не найден")
+            return False
+
+        user_id, _ = user_info
+
+        # Удаление пользователя из списка клиентов
+        clients = self.config_manager.get_clients()
+        for i, client in enumerate(clients):
+            if client["id"] == user_id:
+                clients.pop(i)
+                break
+
+        # Удаление метаданных о пользователе
+        if "users" in self.config_manager.user_metadata:
+            if user_id in self.config_manager.user_metadata["users"]:
+                del self.config_manager.user_metadata["users"][user_id]
+
+        return True
+
+    def list_users(self):
+        """Получение списка всех пользователей"""
+        users = []
+        if "users" in self.config_manager.user_metadata:
+            for user_id, user_data in self.config_manager.user_metadata["users"].items():
+                users.append({
+                    "id": user_id,
+                    "name": user_data["name"]
+                })
+        return users
+
+    def generate_client_config(self, name):
+        """Генерация конфигурации для клиента"""
+        # Поиск пользователя по имени
+        user_info = self.config_manager.get_client_by_name(name)
+        if not user_info:
+            print(f"Пользователь с именем {name} не найден")
+            return None
+
+        user_id, user_data = user_info
+        server_info = self.config_manager.get_server_info()
+
+        if not server_info:
+            print("Ошибка: информация о сервере не найдена")
+            return None
+
+        # Создание конфигурации для клиента
+        client_config = {
+            "log": {
+                "loglevel": "warning"
+            },
+            "routing": {
+                "rules": [
+                    {
+                        "ip": [
+                            "geoip:private"
+                        ],
+                        "outboundTag": "direct"
+                    }
+                ]
+            },
+            "inbounds": [
+                {
+                    "listen": "127.0.0.1",
+                    "port": 10808,
+                    "protocol": "socks"
+                },
+                {
+                    "listen": "127.0.0.1",
+                    "port": 10809,
+                    "protocol": "http"
+                }
+            ],
+            "outbounds": [
+                {
+                    "protocol": "vless",
+                    "settings": {
+                        "vnext": [
+                            {
+                                "address": "",  # IP-адрес сервера заполняется клиентом
+                                "port": server_info["port"],
+                                "users": [
+                                    {
+                                        "id": user_id,
+                                        "encryption": "none",
+                                        "flow": "xtls-rprx-vision"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "streamSettings": {
+                        "network": "tcp",
+                        "security": "reality",
+                        "realitySettings": {
+                            "fingerprint": "chrome",
+                            "serverName": server_info["serverName"],
+                            "publicKey": server_info["publicKey"],
+                            "shortId": server_info["shortId"]
+                        }
+                    },
+                    "tag": "proxy"
+                },
+                {
+                    "protocol": "freedom",
+                    "tag": "direct"
+                }
+            ]
+        }
+
+        return client_config
+
+    def generate_qr_code(self, name, save_path=None):
+        """Генерация QR-кода с конфигурацией для клиента"""
+        client_config = self.generate_client_config(name)
+        if not client_config:
+            return False
+
+        # Преобразование конфигурации в JSON-строку
+        config_json = json.dumps(client_config)
+
+        # Создание QR-кода
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(config_json)
+        qr.make(fit=True)
+
+        # Создание изображения QR-кода
+        img = qr.make_image(fill_color="black", back_color="white")
+
+        # Сохранение QR-кода в файл или его отображение
+        if save_path:
+            img.save(save_path)
+            print(f"QR-код с конфигурацией сохранен в {save_path}")
+        else:
+            # Если путь для сохранения не указан, сохраняем во временный файл
+            # и выводим его путь для просмотра
+            temp_file = tempfile.mktemp(suffix=".png")
+            img.save(temp_file)
+            print(f"QR-код сохранен во временный файл: {temp_file}")
+
+            # Вывод конфигурации в консоль
+            print("\nКонфигурация для клиента:")
+            print(json.dumps(client_config, indent=2))
+
+        return True
