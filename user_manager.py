@@ -56,12 +56,22 @@ class UserManager:
 
         user_id, _ = user_info
 
+        # Получение shortId пользователя из метаданных перед удалением
+        user_short_id = None
+        if "users" in self.config_manager.user_metadata:
+            if user_id in self.config_manager.user_metadata["users"]:
+                user_short_id = self.config_manager.user_metadata["users"][user_id].get("shortId")
+
         # Удаление пользователя из списка клиентов
         clients = self.config_manager.get_clients()
         for i, client in enumerate(clients):
             if client["id"] == user_id:
                 clients.pop(i)
                 break
+
+        # Удаление shortId из списка shortIds в конфигурации
+        if user_short_id:
+            self.config_manager.remove_client_short_id(user_short_id)
 
         # Удаление метаданных о пользователе
         if "users" in self.config_manager.user_metadata:

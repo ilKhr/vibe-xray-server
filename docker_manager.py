@@ -150,3 +150,23 @@ class DockerManager:
         except subprocess.SubprocessError as e:
             print(f"Ошибка при получении логов: {e}")
             return None
+
+    def restart_xray(self):
+        """Перезапуск контейнера Xray"""
+        if not self._check_docker():
+            return False
+
+        if not self._check_container_exists():
+            print("Контейнер не существует, нечего перезапускать")
+            return False
+
+        try:
+            subprocess.run(
+                ["docker", "restart", self.container_name],
+                check=True
+            )
+            print(f"Контейнер {self.container_name} перезапущен")
+            return True
+        except subprocess.SubprocessError as e:
+            print(f"Ошибка при перезапуске контейнера: {e}")
+            return False

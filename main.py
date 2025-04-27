@@ -18,6 +18,7 @@ def main():
     config_parser.add_argument('--server-names', type=str, nargs='+', help='Список имен серверов')
     config_parser.add_argument('--port', type=int, default=443, help='Порт для прослушивания')
     config_parser.add_argument('--save', type=str, help='Путь для сохранения конфигурации', default='config.json')
+    config_parser.add_argument('--restart', action='store_true', help='Перезапустить сервер после сохранения конфигурации')
 
     # Команда для запуска xray
     start_parser = subparsers.add_parser('start', help='Запуск xray с указанным конфигом')
@@ -31,11 +32,13 @@ def main():
     add_user_parser = subparsers.add_parser('add-user', help='Добавление пользователя в конфигурацию')
     add_user_parser.add_argument('--name', type=str, required=True, help='Имя пользователя')
     add_user_parser.add_argument('--config', type=str, default='config.json', help='Путь к файлу конфигурации')
+    add_user_parser.add_argument('--restart', action='store_true', help='Перезапустить сервер после добавления пользователя')
 
     # Команда для удаления пользователя
     remove_user_parser = subparsers.add_parser('remove-user', help='Удаление пользователя из конфигурации')
     remove_user_parser.add_argument('--name', type=str, required=True, help='Имя пользователя')
     remove_user_parser.add_argument('--config', type=str, default='config.json', help='Путь к файлу конфигурации')
+    remove_user_parser.add_argument('--restart', action='store_true', help='Перезапустить сервер после удаления пользователя')
 
     # Команда для получения QR-кода
     qr_parser = subparsers.add_parser('qr', help='Получение QR-кода с конфигурацией для клиента')
@@ -63,6 +66,7 @@ def main():
     # Команда для генерации ключей
     keys_parser = subparsers.add_parser('gen-keys', help='Генерация ключей для Reality')
     keys_parser.add_argument('--save-to-config', type=str, help='Сохранить ключи в указанный файл конфигурации')
+    keys_parser.add_argument('--restart', action='store_true', help='Перезапустить сервер после сохранения ключей')
 
     # Команда для просмотра всех пользователей
     list_users_parser = subparsers.add_parser('list-users', help='Список всех пользователей')
@@ -111,8 +115,10 @@ def main():
             config_manager.update_keys(private_key, public_key, short_id)
             print("Сгенерированы новые ключи и short_id")
 
-        config_manager.save_config(args.save)
+        config_manager.save_config(args.save, args.restart)
         print(f"Конфигурация сохранена в {args.save}")
+        if args.restart:
+            print("Сервер перезапущен")
 
     elif args.command == 'start':
         docker_manager.start_xray(args.config, args.detach)
@@ -125,14 +131,18 @@ def main():
     elif args.command == 'add-user':
         config_manager.load_config(args.config)
         user_id = user_manager.add_user(args.name)
-        config_manager.save_config(args.config)
+        config_manager.save_config(args.config, args.restart)
         print(f"Пользователь {args.name} добавлен с ID: {user_id}")
+        if args.restart:
+            print("Сервер перезапущен")
 
     elif args.command == 'remove-user':
         config_manager.load_config(args.config)
         user_manager.remove_user(args.name)
-        config_manager.save_config(args.config)
+        config_manager.save_config(args.config, args.restart)
         print(f"Пользователь {args.name} удален")
+        if args.restart:
+            print("Сервер перезапущен")
 
     elif args.command == 'qr':
         config_manager.load_config(args.config)
@@ -190,8 +200,10 @@ def main():
             server_info = config_manager.get_server_info()
             server_info["publicKey"] = public_key
 
-            config_manager.save_config(args.save_to_config)
+            config_manager.save_config(args.save_to_config, args.restart)
             print(f"Ключи сохранены в конфигурации {args.save_to_config}")
+            if args.restart:
+                print("Сервер перезапущен")
 
     elif args.command == 'list-users':
         config_manager.load_config(args.config)

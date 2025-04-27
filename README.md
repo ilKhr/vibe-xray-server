@@ -14,6 +14,8 @@
 - Автоматическое определение IP-адреса сервера
 - Генерация ключей для REALITY
 - Частичное обновление конфигурации
+- Индивидуальные shortId для каждого пользователя
+- Автоматический перезапуск сервера после изменения конфигурации
 
 ## Требования
 
@@ -42,22 +44,22 @@ pip install -r requirements.txt
 python3 main.py config --dest example.com:443 --server-names example.com www.example.com --port 443 --save config.json
 ```
 
-### Обновление параметров существующей конфигурации
+### Обновление параметров существующей конфигурации с перезапуском сервера
 
 ```bash
-python3 main.py config --dest new-example.com:443 --save config.json
+python3 main.py config --dest new-example.com:443 --save config.json --restart
 ```
 
 ### Генерация ключей
 
 ```bash
-python3 main.py gen-keys --save-to-config config.json
+python3 main.py gen-keys
 ```
 
-### Генерация и сохранение ключей в конфигурацию
+### Генерация и сохранение ключей в конфигурацию с перезапуском сервера
 
 ```bash
-python3 main.py gen-keys --save-to-config config.json
+python3 main.py gen-keys --save-to-config config.json --restart
 ```
 
 ### Запуск Xray
@@ -78,10 +80,22 @@ python3 main.py stop
 python3 main.py add-user --name username --config config.json
 ```
 
+### Добавление пользователя с перезапуском сервера
+
+```bash
+python3 main.py add-user --name username --config config.json --restart
+```
+
 ### Удаление пользователя
 
 ```bash
 python3 main.py remove-user --name username --config config.json
+```
+
+### Удаление пользователя с перезапуском сервера
+
+```bash
+python3 main.py remove-user --name username --config config.json --restart
 ```
 
 ### Список пользователей
@@ -180,10 +194,22 @@ python3 main.py config --dest new-domain.com:443
 python3 main.py config --server-names new-domain.com www.new-domain.com
 ```
 
-### Обновление ключей
+### Обновление ключей с перезапуском сервера
 
 ```bash
-python3 main.py gen-keys --save-to-config config.json
+python3 main.py gen-keys --save-to-config config.json --restart
+```
+
+### Управление пользователями с перезапуском сервера
+
+Добавление пользователя и автоматический перезапуск сервера:
+```bash
+python3 main.py add-user --name user2 --restart
+```
+
+Удаление пользователя и автоматический перезапуск сервера:
+```bash
+python3 main.py remove-user --name user2 --restart
 ```
 
 ## Примечания
@@ -192,3 +218,6 @@ python3 main.py gen-keys --save-to-config config.json
 - При запуске Xray используется порт 443, убедитесь, что он свободен или измените порт в конфигурации
 - Конфигурация и метаданные о пользователях сохраняются в JSON файлах
 - Автоматическое определение IP-адреса может не работать корректно за NAT или прокси
+- Каждый пользователь получает уникальный shortId
+- При удалении пользователя также удаляется его shortId из конфигурации
+- Используйте флаг `--restart` для автоматического перезапуска сервера после изменения конфигурации

@@ -71,7 +71,7 @@ class ConfigManager:
             print(f"Ошибка при загрузке конфигурации: {e}")
             raise
 
-    def save_config(self, file_path):
+    def save_config(self, file_path, restart_server=False):
         """Сохранение конфигурации в файл"""
         try:
             with open(file_path, 'w') as f:
@@ -81,6 +81,12 @@ class ConfigManager:
             metadata_path = self._get_metadata_path(file_path)
             with open(metadata_path, 'w') as f:
                 json.dump(self.user_metadata, f, indent=2)
+
+            # Если требуется перезапуск сервера
+            if restart_server:
+                from docker_manager import DockerManager
+                docker_manager = DockerManager()
+                docker_manager.restart_xray()
 
             return True
         except Exception as e:
@@ -247,6 +253,12 @@ class ConfigManager:
         # Добавляем short_id, если его еще нет в списке
         if short_id not in reality_settings["shortIds"]:
             reality_settings["shortIds"].append(short_id)
+
+    def remove_client_short_id(self, short_id):
+        """Удаление short_id из списка shortIds в realitySettings"""
+        reality_settings = self.get_reality_settings()
+        if "shortIds" in reality_settings and short_id in reality_settings["shortIds"]:
+            reality_settings["shortIds"].remove(short_id)
 
     def get_server_info(self):
         """Получение информации о сервере из метаданных"""
