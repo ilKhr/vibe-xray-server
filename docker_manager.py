@@ -58,7 +58,7 @@ class DockerManager:
             os.makedirs(config_dir)
         return config_dir
 
-    def start_xray(self, config_path, detach=False):
+    def start_xray(self, config_path, detach=False, host_port=443):
         """Запуск Xray в Docker-контейнере"""
         if not self._check_docker():
             return False
@@ -76,7 +76,7 @@ class DockerManager:
             "docker", "run",
             "--name", self.container_name,
             "-v", f"{config_dir}:/etc/xray",
-            "-p", "443:443/tcp",  # Предполагаем, что используется порт 443
+            "-p", f"{host_port}:443/tcp",
             "--restart", "unless-stopped"
         ]
 

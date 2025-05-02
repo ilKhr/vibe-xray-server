@@ -24,6 +24,7 @@ def main():
     start_parser = subparsers.add_parser('start', help='Запуск xray с указанным конфигом')
     start_parser.add_argument('--config', type=str, default='config.json', help='Путь к файлу конфигурации')
     start_parser.add_argument('--detach', action='store_true', help='Запуск в фоновом режиме')
+    start_parser.add_argument('--host-port', type=int, default=443, help='Хост-порт для проброса в контейнер (по умолчанию 443)')
 
     # Команда для остановки xray
     stop_parser = subparsers.add_parser('stop', help='Остановка xray')
@@ -121,7 +122,7 @@ def main():
             print("Сервер перезапущен")
 
     elif args.command == 'start':
-        docker_manager.start_xray(args.config, args.detach)
+        docker_manager.start_xray(args.config, args.detach, args.host_port)
         print("Xray запущен")
 
     elif args.command == 'stop':

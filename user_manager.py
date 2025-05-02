@@ -249,7 +249,8 @@ class UserManager:
             "sni": server_info["serverName"],
             "pbk": server_info["publicKey"],
             "sid": user_short_id,
-            "spx": "/"  # Путь по умолчанию
+            "spx": "/",  # Путь по умолчанию
+            "fp": "chrome"  # Добавляем fingerprint
         }
 
         # Кодирование параметров для URL
